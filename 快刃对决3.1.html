@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>快刃对决 - 骑士重制版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Zcool+KuaiLe&family=Black+Ops+One&family=Ma+Shan+Zheng&display=swap');
+
+        body {
+            background-color: #0a0a0a;
+            color: white;
+            overflow: hidden;
+            touch-action: none;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            user-select: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #111;
+        }
+
+        canvas {
+            background-color: #1a1a1a;
+            border-top: 4px solid #333;
+            border-bottom: 4px solid #333;
+            box-shadow: 0 0 100px rgba(0,0,0,0.8);
+        }
+
+        .ui-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .hud-top {
+            display: flex;
+            justify-content: space-between;
+            padding: 30px 50px;
+            font-family: 'Black Ops One', cursive;
+        }
+
+        .win-counter {
+            position: absolute;
+            top: 110px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
+            background: rgba(0,0,0,0.7);
+            padding: 8px 30px;
+            border-radius: 50px;
+            border: 1px solid rgba(255,215,0,0.4);
+            backdrop-filter: blur(8px);
+            z-index: 10;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            width: fit-content;
+        }
+
+        .win-counter span {
+            font-family: 'Black Ops One', cursive;
+            font-size: 20px;
+            text-shadow: 0 0 100px rgba(0,0,0,0.8);
+        }
+
+        .hp-bar-outer {
+            width: 350px; height: 25px;
+            background: #222; border: 2px solid #444;
+            transform: skewX(-20deg);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .hp-fill { 
+            height: 100%; 
+            transition: width 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+        }
+        .p1-hp { background: linear-gradient(90deg, #FFD700, #FFA500); float: right; }
+        .p2-hp { background: linear-gradient(90deg, #1E90FF, #4488ff); float: left; }
+        
+        .hp-warning { animation: hp-shake 0.2s infinite; background: #ff3333 !important; }
+
+        @keyframes hp-shake {
+            0% { transform: translateX(0); }
+            50% { transform: translateX(2px); }
+            100% { transform: translateX(0); }
+        }
+
+        .menu-screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+            z-index: 100;
+        }
+
+        .btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: white;
+            padding: 15px 50px;
+            font-size: 24px;
+            margin: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Zcool KuaiLe', sans-serif;
+            width: 320px;
+            text-align: center;
+        }
+
+        .btn:hover { background: white; color: black; transform: translateY(-3px); }
+
+        #winner-text {
+            width: 100%;
+            text-align: center;
+            font-size: 70px;
+            font-family: 'Black Ops One', cursive;
+            margin-bottom: 30px;
+            display: block;
+            letter-spacing: 2px;
+        }
+
+        .float-text {
+            position: absolute;
+            font-family: 'Black Ops One';
+            font-size: 45px;
+            pointer-events: none;
+            animation: floatUp 0.8s ease-out forwards;
+            -webkit-text-stroke: 1px #000;
+            z-index: 200;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(0.5); opacity: 0; }
+            30% { transform: translateY(-20px) scale(1.2); opacity: 1; }
+            100% { transform: translateY(-80px) scale(1); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+
+    <div class="ui-layer">
+        <div class="hud-top">
+            <div>
+                <div style="color:#FDB931; margin-bottom:5px;">GOLDEN KNIGHT</div>
+                <div class="hp-bar-outer"><div id="p1-hp-bar" class="hp-fill p1-hp" style="width: 100%;"></div></div>
+            </div>
+            <div id="game-timer" style="font-size: 50px; text-shadow: 0 0 20px rgba(255,255,255,0.2);">04:00</div>
+            <div style="text-align: right;">
+                <div style="color:#4488ff; margin-bottom:5px;">BLUE KNIGHT</div>
+                <div class="hp-bar-outer"><div id="p2-hp-bar" class="hp-fill p2-hp" style="width: 100%;"></div></div>
+            </div>
+        </div>
+
+        <div id="win-counter" class="win-counter">
+            <span style="color:#FDB931;">P1: <span id="p1-wins">0</span></span>
+            <span style="color:#666; font-size: 14px;">VS</span>
+            <span style="color:#4488ff;">P2: <span id="p2-wins">0</span></span>
+        </div>
+        <div id="popup-layer"></div>
+    </div>
+
+    <!-- 主菜单 -->
+    <div id="main-menu" class="menu-screen">
+        <h1 style="font-family:'Ma Shan Zheng'; font-size: 100px; margin-bottom: 10px; letter-spacing: 10px;">快刃对决</h1>
+        <p style="font-family:'Black Ops One'; color: #666; margin-bottom: 40px;">KNIGHTS' ETERNAL STRUGGLE</p>
+        <button class="btn" onclick="startGame('pve')">⚔️ 练习赛 (PvE)</button>
+        <button class="btn" onclick="startGame('pvp')">🛡️ 殊死战 (PvP)</button>
+        <div style="color:#555; font-size: 14px; margin-top: 40px; text-align: center; border-top: 1px solid #333; padding-top: 20px;">
+            P1: Q/E 移动, Z 攻击, X 格挡, C 闪避 | P2: B/M 移动, J 攻击, K 格挡, L 闪避
+        </div>
+    </div>
+
+    <!-- 结算画面 -->
+    <div id="game-over-screen" class="menu-screen" style="display: none;">
+        <h2 id="winner-text">P1 VICTORY</h2>
+        <button class="btn" onclick="restartGame(true)" style="border-color: #FFD700;">再来一局 (累计胜场)</button>
+        <button class="btn" onclick="returnToMenu()">返回主菜单</button>
+    </div>
+</div>
+
+<script>
+const CANVAS_WIDTH = 1280, CANVAS_HEIGHT = 720, GROUND_Y = 620, MAX_HP = 5;
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let gameLoopId, gameState = 'menu', gameMode = 'pve', keys = {}, particles = [];
+let p1WinCount = 0, p2WinCount = 0;
+
+window.addEventListener('keydown', e => {
+    keys[e.code] = true;
+    if (gameState === 'playing') {
+        if (e.code === 'KeyW') triggerCheat(); // 即死爆炸
+        if (e.code === 'KeyS') triggerMissile(); // 追踪飞剑
+        if (e.code === 'KeyD') triggerHeavyHead(); // 滚落重头
+    }
+});
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+class Particle {
+    constructor(x, y, color, size = 4, vx, vy, gravity = 0) {
+        this.x = x; this.y = y; this.color = color;
+        this.vx = vx !== undefined ? vx : (Math.random() - 0.5) * 10;
+        this.vy = vy !== undefined ? vy : (Math.random() - 0.5) * 10;
+        this.life = 1.0;
+        this.size = size;
+        this.gravity = gravity;
+    }
+    update() {
+        this.vx *= 0.98;
+        this.vy += this.gravity;
+        this.x += this.vx;
+        this.y += this.vy;
+        if (this.y > GROUND_Y) {
+            this.y = GROUND_Y;
+            this.vy *= -0.4;
+            this.vx *= 0.8;
+        }
+        this.life -= 0.01; 
+    }
+    draw(ctx) { 
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, this.life); 
+        ctx.fillStyle = this.color; 
+        ctx.fillRect(this.x, this.y, this.size, this.size); 
+        ctx.restore();
+    }
+}
+
+// 追踪飞剑类
+class SwordMissile {
+    constructor(x, y, target) {
+        this.x = x; this.y = y; this.target = target;
+        this.speed = 7;
+        this.active = true;
+        this.angle = 0;
+    }
+    update() {
+        if (!this.active) return;
+        const dx = this.target.x - this.x;
+        const dy = (this.target.y - 50) - this.y;
+        this.angle = Math.atan2(dy, dx);
+        this.x += Math.cos(this.angle) * this.speed;
+        this.y += Math.sin(this.angle) * this.speed;
+        for (let i = 0; i < 4; i++) {
+            particles.push(new Particle(
+                this.x - Math.cos(this.angle) * 20,
+                this.y - Math.sin(this.angle) * 20,
+                Math.random() > 0.3 ? (Math.random() > 0.5 ? "#FF4500" : "#FF8C00") : "#FFFF00",
+                Math.random() * 6 + 2,
+                (Math.random() - 0.5) * 5 - Math.cos(this.angle) * 3,
+                (Math.random() - 0.5) * 5 - Math.sin(this.angle) * 3,
+                0.03
+            ));
+        }
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < 40) {
+            this.active = false;
+            triggerCheat(true); 
+        }
+    }
+    draw(ctx) {
+        if (!this.active) return;
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle);
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = "#FFD700";
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = '#FFD700';
+        ctx.beginPath();
+        ctx.moveTo(-20, 0); ctx.lineTo(40, 0);
+        ctx.stroke();
+        ctx.fillStyle = '#D4AF37';
+        ctx.fillRect(-25, -10, 10, 20);
+        ctx.restore();
+    }
+}
+
+// 滚落重头类 - 速度已调慢
+class RollingHead {
+    constructor(x, y, target) {
+        this.x = x; this.y = y; this.target = target;
+        // 初始水平速度从 12 降低到 6
+        this.vx = (target.x > x ? 1 : -1) * 6;
+        // 初始跳跃垂直速度从 -10 降低到 -4
+        this.vy = -4; 
+        this.rotation = 0;
+        this.active = true;
+        // 重力感从 0.8 调整到 0.4 配合整体慢动作
+        this.gravity = 0.4;
+    }
+    update() {
+        if (!this.active) return;
+        this.vy += this.gravity;
+        this.x += this.vx;
+        this.y += this.vy;
+        // 旋转速度也相应减慢
+        this.rotation += this.vx * 0.04;
+
+        if (this.y > GROUND_Y - 20) {
+            this.y = GROUND_Y - 20;
+            // 弹力极小，体现重量
+            this.vy = -Math.abs(this.vy) * 0.15; 
+            // 摩擦力
+            this.vx *= 0.99;
+            
+            // 滚动灰尘
+            if (Math.abs(this.vx) > 0.5) {
+                particles.push(new Particle(this.x, GROUND_Y, "#555", 3, -this.vx*0.5, -Math.random()*1.5));
+            }
+        }
+
+        const dx = this.target.x - this.x;
+        const dist = Math.abs(dx);
+        // 碰撞范围略微扩大以确保在慢速下也能准确检测
+        if (dist < 50 && this.target.hp > 0) {
+            this.active = false;
+            triggerSquelch(); 
+        }
+    }
+    draw(ctx) {
+        if (!this.active) return;
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        ctx.fillStyle = '#F7E7CE';
+        ctx.beginPath(); ctx.arc(0, 0, 22, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#111';
+        ctx.fillRect(5, -5, 12, 5); 
+        ctx.restore();
+    }
+}
+
+let activeMissile = null;
+let activeHead = null;
+
+function showFloatText(text, x, y, color) {
+    const el = document.createElement('div');
+    el.className = 'float-text'; el.innerText = text;
+    el.style.left = (x / CANVAS_WIDTH * 100) + '%';
+    el.style.top = (y / CANVAS_HEIGHT * 100) + '%';
+    el.style.color = color;
+    document.getElementById('popup-layer').appendChild(el);
+    setTimeout(() => el.remove(), 800);
+}
+
+function triggerMissile() {
+    if (game.p2.hp <= 0 || activeMissile || gameState !== 'playing') return;
+    game.p1.hasSword = false;
+    activeMissile = new SwordMissile(game.p1.x, game.p1.y - 60, game.p2);
+    showFloatText("HEAVEN'S BLADE!", game.p1.x, game.p1.y - 150, "#FFD700");
+}
+
+function triggerHeavyHead() {
+    if (game.p2.hp <= 0 || activeHead || gameState !== 'playing') return;
+    game.p1.hasHead = false;
+    activeHead = new RollingHead(game.p1.x, game.p1.y - 100, game.p2);
+    showFloatText("GRAVITY HEAD!", game.p1.x, game.p1.y - 150, "#FFD700");
+}
+
+function triggerSquelch() {
+    if (gameState === 'ending_sequence') return;
+    game.p2.hp = 0;
+    game.p2.isSquashed = true; 
+    game.shake = 60;
+    activeHead = null;
+    showFloatText("SQUASHED!", game.p2.x, game.p2.y - 150, "#FFD700");
+
+    gameState = 'ending_sequence';
+    setTimeout(() => {
+        game.end('P1');
+    }, 2000);
+}
+
+function triggerCheat(isFromMissile = false) {
+    if ((game.p2.hp <= 0 && !isFromMissile) || gameState === 'ending_sequence') return;
+    for(let i=0; i<80; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 30 + 10;
+        particles.push(new Particle(
+            isFromMissile ? game.p2.x : game.p1.x, 
+            isFromMissile ? game.p2.y - 50 : game.p1.y - 50, 
+            "#FFD700", 
+            Math.random() * 10 + 2,
+            Math.cos(angle) * speed,
+            Math.sin(angle) * speed,
+            0.2
+        ));
+    }
+    const p2X = game.p2.x;
+    const p2Y = game.p2.y;
+    for(let i=0; i<150; i++) {
+        particles.push(new Particle(
+            p2X + (Math.random() - 0.5) * 60,
+            p2Y - Math.random() * 100,
+            Math.random() > 0.5 ? "#2B5797" : "#4488ff",
+            Math.random() * 6 + 2,
+            (Math.random() - 0.5) * 45,
+            (Math.random() - 1) * 35,
+            0.5
+        ));
+    }
+    game.shake = 80;
+    showFloatText("ANNIHILATED!", game.p2.x, game.p2.y - 150, "#FFD700");
+    game.p2.hp = 0;
+    game.p2.hidden = true; 
+    activeMissile = null;
+    gameState = 'ending_sequence';
+    setTimeout(() => {
+        game.end('P1');
+    }, 2000);
+}
+
+class Fighter {
+    constructor(isP1, x) {
+        this.isP1 = isP1; this.x = x; this.y = GROUND_Y;
+        this.hp = MAX_HP; this.state = 'idle'; this.timer = 0;
+        this.facing = isP1 ? 1 : -1; this.cooldown = 0;
+        this.width = 60; this.height = 100;
+        this.shake = 0;
+        this.hidden = false;
+        this.hasSword = true; 
+        this.hasHead = true; 
+        this.isSquashed = false;
+    }
+    reset(x) {
+        this.x = x; this.hp = MAX_HP; this.state = 'idle'; this.timer = 0;
+        this.facing = this.isP1 ? 1 : -1; this.cooldown = 0; 
+        this.hidden = false; this.hasSword = true; this.hasHead = true;
+        this.isSquashed = false;
+    }
+    update(inputs, opponent) {
+        if (this.hidden || this.isSquashed) return;
+        if (this.cooldown > 0) this.cooldown--;
+        if (this.shake > 0) this.shake--;
+
+        if (this.state === 'idle' || this.state === 'move') {
+            if (inputs.attack && this.hasSword) { 
+                this.state = 'windup'; this.timer = 12; 
+            } else if (inputs.block && this.hasSword) { 
+                this.state = 'block'; this.timer = 25; 
+            } else if (inputs.dodge && this.cooldown === 0) { 
+                this.state = 'dodge'; this.timer = 15; this.cooldown = 100;
+            } else if (inputs.left) { 
+                this.x -= 6; this.facing = -1; this.state = 'move'; 
+            } else if (inputs.right) { 
+                this.x += 6; this.facing = 1; this.state = 'move'; 
+            } else {
+                this.state = 'idle';
+            }
+        } else if (this.state === 'windup') {
+            if (--this.timer <= 0) {
+                this.state = 'active'; this.timer = 6;
+                this.checkHit(opponent);
+            }
+        } else if (this.state === 'active') {
+            if (--this.timer <= 0) { this.state = 'recovery'; this.timer = 15; }
+        } else if (this.state === 'dodge') {
+            this.x += this.facing * 12;
+            if (--this.timer <= 0) this.state = 'idle';
+        } else if (this.state === 'recovery' || this.state === 'hit' || this.state === 'stun') {
+            if (--this.timer <= 0) this.state = 'idle';
+        } else if (this.state === 'block') {
+            if (--this.timer <= 0) { this.state = 'stun'; this.timer = 30; } 
+        }
+
+        this.x = Math.max(50, Math.min(CANVAS_WIDTH - 50, this.x));
+    }
+
+    checkHit(opponent) {
+        if (opponent.hidden || opponent.isSquashed) return;
+        const dist = Math.abs(this.x - opponent.x);
+        if (dist < 140 && ((this.facing === 1 && opponent.x > this.x) || (this.facing === -1 && opponent.x < this.x))) {
+            if (opponent.state === 'dodge') {
+                showFloatText("MISS!", opponent.x, opponent.y - 100, "#aaa");
+                return;
+            }
+            if (opponent.state === 'block') {
+                this.state = 'stun'; this.timer = 50;
+                opponent.state = 'idle'; opponent.timer = 0;
+                showFloatText("PARRY!", this.x, this.y - 100, "#FFD700");
+                game.shake = 15;
+                return;
+            }
+            const dmg = this.hp <= 1 ? 2 : 1;
+            opponent.hp -= dmg;
+            opponent.state = 'hit'; opponent.timer = 15; opponent.shake = 10;
+            showFloatText(dmg > 1 ? "CRITICAL!" : "HIT!", opponent.x, opponent.y - 100, dmg > 1 ? "#ff0" : "#fff");
+            game.shake = 8;
+            for(let i=0; i<10; i++) particles.push(new Particle(opponent.x, opponent.y-50, "#ff4444"));
+        }
+    }
+
+    draw(ctx) {
+        if (this.hidden) return;
+        const offX = (Math.random()-0.5) * this.shake;
+        ctx.save();
+        ctx.translate(this.x + offX, this.y);
+        
+        if (this.isSquashed) {
+            ctx.scale(2, 0.1); 
+            ctx.fillStyle = this.isP1 ? '#D4AF37' : '#2B5797';
+            ctx.fillRect(-40, -100, 80, 100);
+            ctx.restore();
+            return;
+        }
+
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath(); ctx.ellipse(0, 0, 40, 10, 0, 0, Math.PI*2); ctx.fill();
+
+        const mainColor = this.isP1 ? '#D4AF37' : '#2B5797';
+        const subColor = this.isP1 ? '#F7E7CE' : '#4488ff';
+
+        ctx.fillStyle = this.state === 'hit' ? '#fff' : mainColor;
+        ctx.fillRect(-25, -90, 50, 60);
+        
+        if (this.hasHead) {
+            ctx.fillStyle = subColor;
+            ctx.beginPath(); ctx.arc(0, -100, 22, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#111';
+            ctx.fillRect(5 * this.facing, -105, 12 * this.facing, 5);
+        }
+
+        if (this.hasSword) {
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = this.isP1 ? '#FFD700' : '#E5E4E2';
+            ctx.beginPath();
+            if (this.state === 'windup') {
+                ctx.moveTo(0, -60); ctx.lineTo(-30 * this.facing, -120);
+            } else if (this.state === 'active') {
+                ctx.moveTo(0, -60); ctx.lineTo(110 * this.facing, -60);
+            } else if (this.state === 'block') {
+                ctx.moveTo(20 * this.facing, -20); ctx.lineTo(20 * this.facing, -110);
+            } else {
+                ctx.moveTo(0, -60); ctx.lineTo(40 * this.facing, -100);
+            }
+            ctx.stroke();
+        }
+
+        ctx.restore();
+    }
+}
+
+const game = {
+    p1: new Fighter(true, 300),
+    p2: new Fighter(false, 980),
+    timer: 240, shake: 0,
+    start(mode, streak) {
+        gameState = 'playing'; gameMode = mode;
+        this.p1.reset(300); this.p2.reset(980); this.timer = 240;
+        particles = []; 
+        activeMissile = null;
+        activeHead = null;
+        if (!streak) { p1WinCount = 0; p2WinCount = 0; }
+        document.getElementById('main-menu').style.display = 'none';
+        document.getElementById('game-over-screen').style.display = 'none';
+        const winCounterEl = document.getElementById('win-counter');
+        winCounterEl.style.display = streak ? 'flex' : 'none';
+        document.getElementById('p1-wins').innerText = p1WinCount;
+        document.getElementById('p2-wins').innerText = p2WinCount;
+        if (!gameLoopId) this.loop();
+    },
+    loop() {
+        if (gameState === 'playing' || gameState === 'ending_sequence') this.update();
+        this.draw();
+        gameLoopId = requestAnimationFrame(() => this.loop());
+    },
+    update() {
+        if (gameState === 'playing' || gameState === 'ending_sequence') {
+            this.p1.update({
+                left: keys['KeyQ'], right: keys['KeyE'], attack: keys['KeyZ'], block: keys['KeyX'], dodge: keys['KeyC']
+            }, this.p2);
+            const p2In = gameMode === 'pvp' ? {
+                left: keys['KeyB'], right: keys['KeyM'], attack: keys['KeyJ'], block: keys['KeyK'], dodge: keys['KeyL']
+            } : this.getAI();
+            this.p2.update(p2In, this.p1);
+            if (activeMissile) activeMissile.update();
+            if (activeHead) activeHead.update();
+            if (gameState === 'playing') {
+                if (this.p1.hp <= 0) this.end('P2');
+                if (this.p2.hp <= 0) this.end('P1');
+            }
+        }
+        particles.forEach((p, i) => { p.update(); if(p.life <= 0) particles.splice(i, 1); });
+        if (this.shake > 0) this.shake *= 0.92;
+    },
+    getAI() {
+        if (this.p2.hidden || this.p2.isSquashed) return { left: false, right: false, attack: false, block: false, dodge: false };
+        const d = Math.abs(this.p1.x - this.p2.x);
+        const brain = { left: false, right: false, attack: false, block: false, dodge: false };
+        if (d > 130) {
+            this.p1.x < this.p2.x ? brain.left = true : brain.right = true;
+        } else {
+            if (Math.random() < 0.05) brain.attack = true;
+            if (this.p1.state === 'windup' && Math.random() < 0.1) brain.block = true;
+        }
+        return brain;
+    },
+    draw() {
+        ctx.save();
+        if (this.shake > 1) ctx.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake);
+        ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        ctx.fillStyle = '#333'; ctx.fillRect(0, GROUND_Y, CANVAS_WIDTH, 4);
+        this.p1.draw(ctx); this.p2.draw(ctx);
+        if (activeMissile) activeMissile.draw(ctx);
+        if (activeHead) activeHead.draw(ctx);
+        particles.forEach(p => p.draw(ctx));
+        ctx.restore();
+        const p1HpEl = document.getElementById('p1-hp-bar');
+        const p2HpEl = document.getElementById('p2-hp-bar');
+        p1HpEl.style.width = Math.max(0, (this.p1.hp / MAX_HP * 100)) + '%';
+        p2HpEl.style.width = Math.max(0, (this.p2.hp / MAX_HP * 100)) + '%';
+        p1HpEl.classList.toggle('hp-warning', this.p1.hp <= 1);
+        p2HpEl.classList.toggle('hp-warning', this.p2.hp <= 1);
+    },
+    end(winner) {
+        gameState = 'gameover';
+        if (winner === 'P1') p1WinCount++; else if (winner === 'P2') p2WinCount++;
+        const winText = document.getElementById('winner-text');
+        winText.innerText = (winner === 'P1' ? "GOLDEN" : "BLUE") + " KNIGHT VICTORY";
+        winText.style.color = winner === 'P1' ? '#FFD700' : '#4488ff';
+        document.getElementById('game-over-screen').style.display = 'flex';
+    }
+};
+
+function startGame(mode) { game.start(mode, false); }
+function restartGame(streak) { game.start(gameMode, streak); }
+function returnToMenu() {
+    gameState = 'menu';
+    p1WinCount = 0; p2WinCount = 0;
+    document.getElementById('game-over-screen').style.display = 'none';
+    document.getElementById('win-counter').style.display = 'none';
+    document.getElementById('main-menu').style.display = 'flex';
+}
+
+window.onload = () => {
+    canvas.width = CANVAS_WIDTH; canvas.height = CANVAS_HEIGHT;
+    game.loop();
+};
+</script>
+</body>
+</html>
