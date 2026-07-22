@@ -1,14 +1,16 @@
 # Swiftblade Duel 3.1
 
+🌐 **Language:** English | [中文](README.zh-CN.md)
+
 A browser-based 1v1 knight duel game built as a single-page HTML5 Canvas experience. Two knights fight in a compact arena with movement, attacks, blocking, dodging, health bars, screen shake, particle effects, and round-by-round win tracking.
 
 Version 3.1 expands the duel with extra event-style mechanics, including a homing sword, a falling heavy head, and a dramatic instant knockout sequence.
 
-## Live Demo
+## 🚀 Live Demo
 
 https://ybjdebao.github.io/Swiftblade-Duel-3.1/
 
-## Features
+## ✨ Features
 
 - Single-file static game with no build step.
 - PvE mode for practicing against a simple AI opponent.
@@ -19,7 +21,7 @@ https://ybjdebao.github.io/Swiftblade-Duel-3.1/
 - Canvas-based particles, screen shake, impact feedback, and arcade-style UI.
 - Version 3.1 special events: homing sword, rolling heavy head, and instant knockout effects.
 
-## Controls
+## 🎮 Controls
 
 Player 1, Golden Knight:
 
@@ -49,7 +51,7 @@ Special keys in version 3.1:
 | Homing sword | S |
 | Rolling heavy head | D |
 
-## How to Play
+## 🕹️ How to Play
 
 1. Open the live demo or serve the repository locally.
 2. Choose Practice Match for PvE or Duel Match for PvP.
@@ -58,7 +60,7 @@ Special keys in version 3.1:
 5. Block incoming strikes, or dodge to avoid damage.
 6. Win by reducing the opponent's health to zero.
 
-## Local Development
+## 🛠️ Local Development
 
 This project is plain HTML, CSS, and JavaScript. No package manager or bundler is required.
 
@@ -74,7 +76,7 @@ http://localhost:8000
 
 You can also open `index.html` directly in a browser, although a local server is recommended for a more consistent development workflow.
 
-## Project Structure
+## 📁 Project Structure
 
 ```text
 .
@@ -82,13 +84,13 @@ You can also open `index.html` directly in a browser, although a local server is
 │   └── workflows/
 │       └── static.yml
 ├── index.html
-└── README.md
+├── README.md
+└── README.zh-CN.md
 ```
 
-## Technical Notes
+## 🧩 Technical Notes
 
 - Rendering is handled with the Canvas 2D API.
 - Game state, fighters, particles, projectiles, and special events are implemented in vanilla JavaScript.
 - Styling uses inline CSS plus Tailwind loaded from a CDN.
 - The game is designed for desktop keyboard play.
-
